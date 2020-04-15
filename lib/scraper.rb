@@ -4,43 +4,44 @@ require 'pry'
 class Scraper
 
   def self.scrape_index_page(index_url)
+    page = Nokogiri::HTML(open(index_url))
+    students = []
 
-    students_hash = []
-    html = Nokogiri::HTML(open(index_url))
-    html.css(".student-card").collect do |student|
-      hash = {
-        name: student.css("h4.student-name").text,
-        location: student.css("p.student-location").text,
-        profile_url: "http://students.learn.co/" + student.css("a").attribute("href")
-      }
-      students_hash << hash
-    end
-    students_hash
-  end	  
-
- def self.scrape_profile_page(profile_url)
-    student_profile = {}
-    html = open(profile_url)
-    profile = Nokogiri::HTML(html)
-
-    # Social Links
-
-    profile.css("div.main-wrapper.profile .social-icon-container a").each do |social|
-      if social.attribute("href").value.include?("twitter")
-        student_profile[:twitter] = social.attribute("href").value
-      elsif social.attribute("href").value.include?("linkedin")
-        student_profile[:linkedin] = social.attribute("href").value
-      elsif social.attribute("href").value.include?("github")
-        student_profile[:github] = social.attribute("href").value
-      else
-        student_profile[:blog] = social.attribute("href").value
+    page.css("div.student-card").each do |student|
+      name = student.css(".student-name").text
+      location = student.css(".student-location").text
+      profile_url = student.css("a").attribute("href").value
+      student_info = {:name => name,
+                :location => location,
+                :profile_url => profile_url}
+      students << student_info
       end
-    end
+    students
+   end
 
-    student_profile[:profile_quote] = profile.css("div.main-wrapper.profile .vitals-text-container .profile-quote").text
-    student_profile[:bio] = profile.css("div.main-wrapper.profile .description-holder p").text
 
-    student_profile
+  def self.scrape_profile_page(profile_url)
+      page = Nokogiri::HTML(open(profile_url))
+      student = {}
+
+      # student[:profile_quote] = page.css(".profile-quote")
+      # student[:bio] = page.css("div.description-holder p")
+      container = page.css(".social-icon-container a").collect{|icon| icon.attribute("href").value}
+      container.each do |link|
+        if link.include?("twitter")
+          student[:twitter] = link
+        elsif link.include?("linkedin")
+          student[:linkedin] = link
+        elsif link.include?("github")
+          student[:github] = link
+        elsif link.include?(".com")
+          student[:blog] = link
+        end
+      end
+      student[:profile_quote] = page.css(".profile-quote").text
+      student[:bio] = page.css("div.description-holder p").text
+      student
   end
+
 end
 
